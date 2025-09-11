@@ -1,0 +1,44 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import pickle
+
+# Load your trained model (assuming you've saved it as 'model.pkl')
+# You can save your model using: pickle.dump(model, open('model.pkl', 'wb'))
+model = pickle.load(open('model.pkl', 'rb'))
+
+# Title
+st.title("🌱 Crop Yield Prediction App")
+
+# User Inputs
+temperature = st.number_input("Temperature (°C)", min_value=0.0, max_value=50.0, step=0.1)
+rainfall = st.number_input("Rainfall (mm)", min_value=0.0, max_value=1000.0, step=1.0)
+crop = st.selectbox("Crop Type", ['Wheat', 'Rice', 'Maize'])  # Add more as needed
+state = st.selectbox("State", ['Punjab', 'Maharashtra', 'Tamil Nadu'])  # Add more as needed
+
+# Prepare input data
+input_dict = {
+    'Temperature': temperature,
+    'Rainfall': rainfall,
+    'Crop_' + crop: 1,
+    'State_' + state: 1
+}
+
+# Create a full feature list based on training data
+# You need to match the exact columns used during training
+# Example: ['Temperature', 'Rainfall', 'Crop_Rice', 'Crop_Wheat', 'State_Punjab', 'State_Tamil Nadu', ...]
+all_features = ['Temperature', 'Rainfall'] + \
+               [col for col in model.feature_names_in_ if col.startswith('Crop_')] + \
+               [col for col in model.feature_names_in_ if col.startswith('State_')]
+
+# Initialize input vector with zeros
+input_data = pd.DataFrame(np.zeros((1, len(all_features))), columns=all_features)
+
+# Fill in user inputs
+for key, value in input_dict.items():
+    input_data[key] = value
+
+# Predict
+if st.button("Predict Yield"):
+    prediction = model.predict(input_data)[0]
+    st.success(f"🌾 Estimated Crop Yield: {prediction:.2f} kg/hectare")
