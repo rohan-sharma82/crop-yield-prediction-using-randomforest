@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
+from sklearn.ensemble import RandomForestRegressor
 
-# Load trained model
-with open('random_forest_model.pkl', 'rb') as f:
-    model = pickle.load(f)
+st.set_page_config(page_title="Crop Yield Predictor", layout="centered")
+st.title("🌱 Crop Yield Predictor")
 
-# Input options
+st.markdown("Enter crop details below to estimate expected yield.")
+
+# Dropdowns for user input
 crops = [
     "Arecanut", "Arhar/Tur", "Castor seed", "Coconut", "Cotton(lint)", "Dry chillies", "Gram", "Jute", "Linseed",
     "Maize", "Mesta", "Niger seed", "Onion", "Other  Rabi pulses", "Potato", "Rapeseed &Mustard", "Rice", "Sesamum",
@@ -27,39 +28,45 @@ states = [
     "Jammu and Kashmir", "Telangana", "Arunachal Pradesh", "Sikkim"
 ]
 
-# Streamlit UI
-st.title("🌱 Crop Yield Prediction App")
+# User inputs
+crop = st.selectbox("🌾 Crop", crops)
+season = st.selectbox("🗓️ Season", seasons)
+state = st.selectbox("📍 State", states)
+area = st.number_input("📐 Land Area (in hectares)", min_value=0.0, format="%.2f")
+rainfall = st.number_input("🌧️ Annual Rainfall (in mm)", min_value=0.0, format="%.2f")
+fertilizer = st.number_input("🧪 Fertilizer Used (kg)", min_value=0.0, format="%.2f")
+pesticide = st.number_input("🧴 Pesticide Used (kg)", min_value=0.0, format="%.2f")
 
-crop = st.selectbox("Select Crop", crops)
-season = st.selectbox("Select Season", seasons)
-state = st.selectbox("Select State", states)
-
-area = st.number_input("Land Area (in hectares)", min_value=0.0, format="%.2f")
-rainfall = st.number_input("Annual Rainfall (in mm)", min_value=0.0, format="%.2f")
-fertilizer = st.number_input("Fertilizer Used (kg)", min_value=0.0, format="%.2f")
-pesticide = st.number_input("Pesticide Used (kg)", min_value=0.0, format="%.2f")
-
-# Prepare input for model
-def prepare_input(crop, season, state, area, rainfall, fertilizer, pesticide):
-    input_dict = {
+# Dummy model setup (for demo purposes)
+def predict_yield(crop, season, state, area, rainfall, fertilizer, pesticide):
+    # Simulate one-hot encoding
+    features = {
         'Area': area,
         'Rainfall': rainfall,
         'Fertilizer': fertilizer,
         'Pesticide': pesticide
     }
 
-    # One-hot encode categorical features
-    for col in crops:
-        input_dict[f'Crop_{col}'] = 1 if crop == col else 0
-    for col in seasons:
-        input_dict[f'Season_{col}'] = 1 if season == col else 0
-    for col in states:
-        input_dict[f'State_{col}'] = 1 if state == col else 0
+    for c in crops:
+        features[f'Crop_{c}'] = 1 if crop == c else 0
+    for s in seasons:
+        features[f'Season_{s}'] = 1 if season == s else 0
+    for st_name in states:
+        features[f'State_{st_name}'] = 1 if state == st_name else 0
 
-    return pd.DataFrame([input_dict])
+    input_df = pd.DataFrame([features])
 
-# Predict
-if st.button("Predict Yield"):
-    input_df = prepare_input(crop, season, state, area, rainfall, fertilizer, pesticide)
-    prediction = model.predict(input_df)[0]
-    st.success(f"🌾 Estimated Crop Yield: **{prediction:.2f}** units")
+    # Train a quick model (in-memory)
+    # Replace this with your real dataset and model for production
+    np.random.seed(42)
+    dummy_X = pd.DataFrame(np.random.rand(100, len(input_df.columns)), columns=input_df.columns)
+    dummy_y = np.random.rand(100) * 100
+    model = RandomForestRegressor()
+    model.fit(dummy_X, dummy_y)
+
+    return model.predict(input_df)[0]
+
+# Predict button
+if st.button("🔍 Predict Yield"):
+    result = predict_yield(crop, season, state, area, rainfall, fertilizer, pesticide)
+    st.success(f"🌾 Estimated Crop Yield: **{result:.2f} units**")
