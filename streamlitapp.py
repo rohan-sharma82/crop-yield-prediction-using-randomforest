@@ -3,20 +3,27 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
-import gdown
+import requests
 
 # ---------------------------------------
-# Google Drive Model Download
+# Google Drive Model Download (via requests)
 # ---------------------------------------
-FILE_ID = "1Hn72yc8mOl4zrjy9rZpNfzeZyVIWQ1Ya"  # your model file ID
+FILE_ID = "1Hn72yc8mOl4zrjy9rZpNfzeZyVIWQ1Ya"
 MODEL_URL = f"https://drive.google.com/uc?id={FILE_ID}"
 MODEL_FILE = "crop_yield_model.pkl"
+
 
 def download_model():
     """Download model file from Google Drive if not already present"""
     if not os.path.exists(MODEL_FILE):
-        gdown.download(MODEL_URL, MODEL_FILE, quiet=False)
+        st.info("📥 Downloading ML model from Google Drive...")
+        response = requests.get(MODEL_URL)
+        response.raise_for_status()  # throw error if download fails
+        with open(MODEL_FILE, "wb") as f:
+            f.write(response.content)
+        st.success("✅ Model downloaded successfully!")
     return MODEL_FILE
+
 
 def load_model():
     """Load trained ML model from pickle"""
@@ -25,13 +32,17 @@ def load_model():
         model = pickle.load(f)
     return model
 
+
 # ---------------------------------------
 # Streamlit UI
 # ---------------------------------------
 def main():
     st.set_page_config(page_title="Crop Yield Prediction", layout="centered")
     st.title("🌱 Crop Yield Prediction App")
-    st.markdown("Predict the **expected crop yield** based on crop, season, state, rainfall, fertilizer, and pesticide.")
+    st.markdown(
+        "Predict the **expected crop yield** based on crop, season, state, "
+        "land area, rainfall, fertilizer, and pesticide usage."
+    )
 
     # Dropdown options
     crop_options = [
@@ -68,7 +79,11 @@ def main():
 
     if st.button("🚀 Predict Yield"):
         # Load model
-        model = load_model()
+        try:
+            model = load_model()
+        except Exception as e:
+            st.error(f"❌ Failed to load model: {e}")
+            return
 
         # Prepare input
         input_df = pd.DataFrame({
@@ -88,16 +103,18 @@ def main():
         try:
             model_features = model.feature_names_in_  # sklearn >= 1.0
         except AttributeError:
-            st.error("Model does not have feature_names_in_. Save model with sklearn >=1.0 or store feature list.")
+            st.error("⚠️ Model is missing feature_names_in_. Retrain with sklearn >=1.0 to include feature names.")
             return
 
         input_encoded = input_encoded.reindex(columns=model_features, fill_value=0)
 
         # Predict
-        prediction = model.predict(input_encoded)[0]
+        try:
+            prediction = model.predict(input_encoded)[0]
+            st.success(f"🌾 Predicted Crop Yield: **{prediction:.2f} tons/hectare**")
+        except Exception as e:
+            st.error(f"❌ Prediction failed: {e}")
 
-        # Show result
-        st.success(f"🌾 Predicted Crop Yield: **{prediction:.2f} tons/hectare**")
 
 # ---------------------------------------
 # Run app
